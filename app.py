@@ -13,7 +13,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("📄 Drawing Revision Extractor")
+st.title("📄 Alstom C1252 Drawing Revision Extractor")
 
 uploaded_file = st.file_uploader(
     "Upload Drawing PDF",
