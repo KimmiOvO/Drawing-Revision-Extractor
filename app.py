@@ -4,6 +4,10 @@ import pandas as pd
 from collections import defaultdict
 from io import BytesIO
 
+# ==========================================
+# Streamlit Page Setup
+# ==========================================
+
 st.set_page_config(
     page_title="Drawing Revision Extractor",
     layout="wide"
@@ -16,6 +20,48 @@ uploaded_file = st.file_uploader(
     type=["pdf"]
 )
 
+# ==========================================
+# Helper Function
+# ==========================================
+
+def compress_pages(pages):
+
+    if not pages:
+        return ""
+
+    pages = sorted(pages)
+
+    ranges = []
+
+    start = pages[0]
+    end = pages[0]
+
+    for p in pages[1:]:
+
+        if p == end + 1:
+            end = p
+
+        else:
+
+            if start == end:
+                ranges.append(str(start))
+            else:
+                ranges.append(f"{start}-{end}")
+
+            start = end = p
+
+    if start == end:
+        ranges.append(str(start))
+    else:
+        ranges.append(f"{start}-{end}")
+
+    return ", ".join(ranges)
+
+
+# ==========================================
+# Main Program
+# ==========================================
+
 if uploaded_file:
 
     pdf = pymupdf.open(
@@ -24,6 +70,7 @@ if uploaded_file:
     )
 
     grouped = defaultdict(list)
+
     page_results = []
 
     progress = st.progress(0)
@@ -35,7 +82,7 @@ if uploaded_file:
         width = page.rect.width
         height = page.rect.height
 
-        candidates = []
+        bottom_words = []
 
         for w in words:
 
@@ -43,26 +90,46 @@ if uploaded_file:
             y0 = w[1]
             text = w[4]
 
-            # YOUR WORKING LOGIC
-            if x0 > width * 0.95 and y0 > height * 0.95:
-                candidates.append((x0, y0, text))
+            # Bottom-right title block area
+            if (
+                x0 > width * 0.75
+                and y0 > height * 0.95
+            ):
+                bottom_words.append(
+                    (x0, y0, text)
+                )
 
-        if candidates:
+        revision = "UNKNOWN"
+        drawing_no = "UNKNOWN"
 
-            candidates.sort(
-                key=lambda x: (x[1], x[0])
+        if bottom_words:
+
+            # Sort left to right
+            bottom_words.sort(
+                key=lambda x: x[0]
             )
 
-            revision = candidates[-1][2]
+            texts = [x[2] for x in bottom_words]
 
-        else:
-            revision = "UNKNOWN"
+            # Revision = rightmost item
+            revision = texts[-1]
+
+            # Drawing Number
+            # Look for text containing /
+            drawing_candidates = [
+                t for t in texts
+                if "/" in t
+            ]
+
+            if drawing_candidates:
+                drawing_no = drawing_candidates[-1]
 
         grouped[revision].append(page_no)
 
         page_results.append(
             {
                 "Page": page_no,
+                "Drawing No": drawing_no,
                 "Revision": revision
             }
         )
@@ -75,15 +142,19 @@ if uploaded_file:
         f"Successfully processed {len(pdf)} pages"
     )
 
+    # ==========================================
+    # Revision Summary
+    # ==========================================
+
     st.subheader("Revision Summary")
 
     summary_data = []
 
-    for rev, pages in grouped.items():
+    for rev in sorted(grouped.keys()):
 
-        page_string = ",".join(
-            map(str, pages)
-        )
+        pages = grouped[rev]
+
+        page_string = compress_pages(pages)
 
         summary_data.append(
             {
@@ -98,13 +169,24 @@ if uploaded_file:
 
     st.divider()
 
+    # ==========================================
+    # Tables
+    # ==========================================
+
     col1, col2 = st.columns(2)
 
-    with col1:
-        st.subheader("Page Details")
+    page_df = pd.DataFrame(
+        page_results
+    )
 
-        page_df = pd.DataFrame(
-            page_results
+    summary_df = pd.DataFrame(
+        summary_data
+    )
+
+    with col1:
+
+        st.subheader(
+            "Page Details"
         )
 
         st.dataframe(
@@ -113,10 +195,9 @@ if uploaded_file:
         )
 
     with col2:
-        st.subheader("Revision Summary Table")
 
-        summary_df = pd.DataFrame(
-            summary_data
+        st.subheader(
+            "Revision Summary Table"
         )
 
         st.dataframe(
@@ -124,7 +205,9 @@ if uploaded_file:
             use_container_width=True
         )
 
+    # ==========================================
     # Excel Export
+    # ==========================================
 
     output = BytesIO()
 
