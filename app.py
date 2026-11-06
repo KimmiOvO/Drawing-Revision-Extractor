@@ -16,7 +16,7 @@ st.set_page_config(
 st.title("📄 Alstom C1252 Drawing Revision Extractor")
 
 uploaded_file = st.file_uploader(
-    "Upload Drawing PDF",
+    "Upload Drawing PDF, it will automatically generates the pages and the corresponding drawing no & version",
     type=["pdf"]
 )
 
