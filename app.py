@@ -55,7 +55,7 @@ def compress_pages(pages):
     else:
         ranges.append(f"{start}-{end}")
 
-    return ", ".join(ranges)
+    return ",".join(ranges)
 
 
 # ==========================================
