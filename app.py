@@ -9,7 +9,7 @@ from io import BytesIO
 # ==========================================
 
 st.set_page_config(
-    page_title="Drawing Revision Extractor",
+    page_title="Alstom C1252 Drawing Revision Extractor",
     layout="wide"
 )
 
